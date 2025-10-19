@@ -1,6 +1,9 @@
-use std::{path::PathBuf, rc::Rc};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
-use clap::Parser as _;
+use clap::{Parser as _, Subcommand};
 use indexmap::IndexMap;
 use jaq_core::{
     Compiler, Ctx, RcIter,
@@ -11,16 +14,31 @@ use tree_sitter::{Node, Parser, TreeCursor};
 
 #[derive(clap::Parser)]
 struct Cli {
-    filter: String,
-    path: PathBuf,
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    Inspect { filter: String, path: PathBuf },
+    Find { filter: String, path: PathBuf },
+    Replace { filter: String, path: PathBuf },
 }
 
 fn main() {
     let cli = Cli::parse();
 
-    let mut parser = Parser::new();
+    match &cli.command {
+        Command::Inspect { filter, path } => eval(filter, path),
+        Command::Find { filter, path } => todo!(),
+        Command::Replace { filter, path } => todo!(),
+    }
+}
 
-    let input = std::fs::read_to_string(cli.path).unwrap();
+fn eval(filter: &str, path: &Path) {
+    let input = std::fs::read_to_string(path).unwrap();
+
+    let mut parser = Parser::new();
 
     parser
         .set_language(&tree_sitter_php::LANGUAGE_PHP.into())
@@ -37,7 +55,7 @@ fn main() {
         .load(
             &arena,
             jaq_core::load::File {
-                code: &cli.filter,
+                code: &filter,
                 path: (),
             },
         )
