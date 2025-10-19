@@ -26,9 +26,9 @@ fn main() {
         .set_language(&tree_sitter_php::LANGUAGE_PHP.into())
         .unwrap();
 
-    let tree = parser.parse(input, None).unwrap();
+    let tree = parser.parse(&input, None).unwrap();
 
-    let json = node_to_json(&tree.root_node(), &mut tree.walk());
+    let json = node_to_json(&tree.root_node(), &mut tree.walk(), &input);
 
     let loader = Loader::new(jaq_std::defs().chain(jaq_json::defs()));
     let arena = Arena::default();
@@ -61,24 +61,46 @@ fn main() {
     }
 }
 
-fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>) -> Val {
-    let mut map = IndexMap::with_capacity_and_hasher(2, foldhash::fast::RandomState::default());
+fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code: &str) -> Val {
+    let mut map = IndexMap::with_capacity_and_hasher(8, foldhash::fast::RandomState::default());
 
     map.insert("kind".to_string().into(), node.kind().to_string().into());
-    // map.insert(
-    //     "name".to_string().into(),
-    //     node.grammar_name().to_string().into(),
-    // );
 
-    let children = node
-        // .children(cursor)
+    let children: Vec<Val> = node
         .named_children(cursor)
         .collect::<Vec<_>>()
-        .into_iter()
-        .map(|child| node_to_json(&child, cursor))
+        .iter()
+        .enumerate()
+        .filter_map(|(i, child)| {
+            if let Some(name) = node.field_name_for_named_child(i as u32) {
+                let value;
+                if child.child_count() == 0 {
+                    value = code[child.start_byte()..child.end_byte()]
+                        .to_string()
+                        .into();
+                } else {
+                    value = node_to_json(child, cursor, code);
+                }
+
+                map.insert(name.to_string().into(), value);
+
+                None
+            } else {
+                Some(node_to_json(&child, cursor, code))
+            }
+        })
         .collect();
 
-    map.insert("children".to_string().into(), Val::Arr(Rc::new(children)));
+    if !children.is_empty() {
+        map.insert("children".to_string().into(), Val::Arr(Rc::new(children)));
+    }
+
+    if node.child_count() == 0 {
+        map.insert(
+            "value".to_string().into(),
+            code[node.start_byte()..node.end_byte()].to_string().into(),
+        );
+    }
 
     Val::obj(map)
 }
