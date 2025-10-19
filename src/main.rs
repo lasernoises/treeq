@@ -66,6 +66,15 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
 
     map.insert("kind".to_string().into(), node.kind().to_string().into());
 
+    map.insert(
+        "start_byte".to_string().into(),
+        (node.start_byte() as isize).into(),
+    );
+    map.insert(
+        "end_byte".to_string().into(),
+        (node.end_byte() as isize).into(),
+    );
+
     let children: Vec<Val> = node
         .named_children(cursor)
         .collect::<Vec<_>>()
@@ -73,14 +82,7 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
         .enumerate()
         .filter_map(|(i, child)| {
             if let Some(name) = node.field_name_for_named_child(i as u32) {
-                let value;
-                if child.child_count() == 0 {
-                    value = code[child.start_byte()..child.end_byte()]
-                        .to_string()
-                        .into();
-                } else {
-                    value = node_to_json(child, cursor, code);
-                }
+                let value = node_to_json(child, cursor, code);
 
                 map.insert(name.to_string().into(), value);
 

@@ -9,3 +9,6 @@ class MyClass {
 }
 
 class EmptyClass {}
+
+SomeClass::theOne("abc");
+
