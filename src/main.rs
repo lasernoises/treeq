@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -10,6 +11,8 @@ use jaq_core::{
     load::{Arena, Loader},
 };
 use jaq_json::Val;
+use serde::Deserialize;
+use serde_json::Value;
 use tree_sitter::{Node, Parser, TreeCursor};
 
 #[derive(clap::Parser)]
@@ -25,17 +28,55 @@ enum Command {
     Replace { filter: String, path: PathBuf },
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(tag = "kind")]
+enum ResultNode {
+    #[serde(rename = "_treeq_replace")]
+    Replace {
+        start_byte: usize,
+        end_byte: usize,
+        entries: Vec<ReplaceEntry>,
+    },
+
+    #[serde(untagged)]
+    TreeSitter {
+        kind: String,
+        start_byte: usize,
+        end_byte: usize,
+        children: Option<Vec<ResultNode>>,
+        value: Option<String>,
+        #[serde(flatten)]
+        extra: HashMap<String, ResultNode>,
+    },
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+enum ReplaceEntry {
+    String(String),
+    Node(ResultNode),
+}
+
 fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Command::Inspect { filter, path } => eval(filter, path),
+        Command::Inspect { filter, path } => {
+            let value = eval(filter, path);
+
+            serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
+        }
         Command::Find { filter, path } => todo!(),
-        Command::Replace { filter, path } => todo!(),
+        Command::Replace { filter, path } => {
+            let value = eval(filter, path);
+
+            let result: ResultNode = serde_json::from_value(value).unwrap();
+            dbg!(result);
+        }
     }
 }
 
-fn eval(filter: &str, path: &Path) {
+fn eval(filter: &str, path: &Path) -> Value {
     let input = std::fs::read_to_string(path).unwrap();
 
     let mut parser = Parser::new();
@@ -68,15 +109,12 @@ fn eval(filter: &str, path: &Path) {
 
     let inputs = RcIter::new(std::iter::empty());
 
-    let out = filter.run((Ctx::new([], &inputs), json));
+    let mut out = filter.run((Ctx::new([], &inputs), json));
 
-    for out in out {
-        let out = out.unwrap();
+    let result = out.next().unwrap().unwrap();
+    assert!(out.next().is_none());
 
-        let value: serde_json::Value = serde_json::Value::from(out);
-
-        serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
-    }
+    result.into()
 }
 
 fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code: &str) -> Val {
