@@ -62,23 +62,31 @@ fn main() {
 
     match &cli.command {
         Command::Inspect { filter, path } => {
-            let value = eval(filter, path);
+            let source = std::fs::read_to_string(path).unwrap();
+            let value = eval(filter, &source);
 
             serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
         }
         Command::Find { filter, path } => todo!(),
         Command::Replace { filter, path } => {
-            let value = eval(filter, path);
+            let source = std::fs::read_to_string(path).unwrap();
+            let value = eval(filter, &source);
 
             let result: ResultNode = serde_json::from_value(value).unwrap();
-            dbg!(result);
+
+            let mut adjustment = 0;
+            let mut modified = source.clone();
+
+            replace(&result, &source, &mut modified, &mut adjustment);
+
+            std::fs::write(path, &modified).unwrap();
+
+            // dbg!(result);
         }
     }
 }
 
-fn eval(filter: &str, path: &Path) -> Value {
-    let input = std::fs::read_to_string(path).unwrap();
-
+fn eval(filter: &str, input: &str) -> Value {
     let mut parser = Parser::new();
 
     parser
@@ -161,4 +169,50 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
     }
 
     Val::obj(map)
+}
+
+fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &mut isize) {
+    match node {
+        ResultNode::Replace {
+            start_byte,
+            end_byte,
+            entries,
+        } => {
+            // TODO: reuse this buffer
+            let mut tmp = String::new();
+
+            for entry in entries {
+                match entry {
+                    ReplaceEntry::String(string) => tmp.push_str(string),
+                    ReplaceEntry::Node(result_node) => match result_node {
+                        ResultNode::Replace { .. } => todo!(),
+                        &ResultNode::TreeSitter {
+                            start_byte,
+                            end_byte,
+                            ..
+                        } => tmp.push_str(&source[start_byte..end_byte]),
+                    },
+                }
+            }
+
+            modified.replace_range(
+                start_byte.checked_add_signed(*adjustment).unwrap()
+                    ..end_byte.checked_add_signed(*adjustment).unwrap(),
+                &tmp,
+            );
+
+            *adjustment += (tmp.len() as isize) - ((end_byte - start_byte) as isize);
+        }
+        ResultNode::TreeSitter {
+            children, extra, ..
+        } => {
+            for child in children.iter().flatten() {
+                replace(child, source, modified, adjustment);
+            }
+
+            for (_, child) in extra {
+                replace(child, source, modified, adjustment);
+            }
+        }
+    }
 }
