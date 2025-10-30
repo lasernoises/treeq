@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use clap::{Parser as _, Subcommand};
 use indexmap::IndexMap;
@@ -201,7 +197,10 @@ fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &
                 &tmp,
             );
 
-            *adjustment += (tmp.len() as isize) - ((end_byte - start_byte) as isize);
+            *adjustment += tmp
+                .len()
+                .checked_signed_diff(end_byte - start_byte)
+                .unwrap();
         }
         ResultNode::TreeSitter {
             children, extra, ..
