@@ -3,7 +3,7 @@ mod langs;
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use clap::{Parser as _, Subcommand};
-use ignore::{Walk, WalkBuilder, types::TypesBuilder};
+use ignore::{WalkBuilder, types::TypesBuilder};
 use indexmap::IndexMap;
 use jaq_core::{
     Compiler, Ctx, RcIter,
