@@ -1,3 +1,5 @@
+mod langs;
+
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use clap::{Parser as _, Subcommand};
@@ -12,8 +14,12 @@ use serde::Deserialize;
 use serde_json::Value;
 use tree_sitter::{Node, Parser, TreeCursor};
 
+use crate::langs::CliLang;
+
 #[derive(clap::Parser)]
 struct Cli {
+    lang: CliLang,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -54,13 +60,23 @@ enum ReplaceEntry {
     Node(ResultNode),
 }
 
+struct Lang {
+    file_type: &'static str,
+    language_fn: tree_sitter_language::LanguageFn,
+}
+
 fn main() {
     let cli = Cli::parse();
+
+    let lang = cli.lang.to_lang();
+
+    let mut parser = Parser::new();
+    parser.set_language(&lang.language_fn.into()).unwrap();
 
     match &cli.command {
         Command::Inspect { filter, path } => {
             let source = std::fs::read_to_string(path).unwrap();
-            let value = eval(filter, &source);
+            let value = eval(&mut parser, filter, &source);
 
             serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
         }
@@ -70,7 +86,7 @@ fn main() {
                 .types(
                     TypesBuilder::new()
                         .add_defaults()
-                        .select("php")
+                        .select(lang.file_type)
                         .build()
                         .unwrap(),
                 )
@@ -83,7 +99,7 @@ fn main() {
                 }
 
                 let source = std::fs::read_to_string(entry.path()).unwrap();
-                let value = eval(filter, &source);
+                let value = eval(&mut parser, filter, &source);
 
                 let result: ResultNode = serde_json::from_value(value).unwrap();
 
@@ -98,13 +114,7 @@ fn main() {
     }
 }
 
-fn eval(filter: &str, input: &str) -> Value {
-    let mut parser = Parser::new();
-
-    parser
-        .set_language(&tree_sitter_php::LANGUAGE_PHP.into())
-        .unwrap();
-
+fn eval(parser: &mut Parser, filter: &str, input: &str) -> Value {
     let tree = parser.parse(&input, None).unwrap();
 
     let json = node_to_json(&tree.root_node(), &mut tree.walk(), &input);
