@@ -57,10 +57,18 @@ enum ResultNode {
         start_byte: usize,
         end_byte: usize,
         children: Option<Vec<ResultNode>>,
-        value: Option<Box<ReplaceEntry>>,
+        value: Option<Box<NodeValue>>,
         #[serde(flatten)]
         extra: HashMap<String, ResultNode>,
     },
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+enum NodeValue {
+    #[allow(unused)]
+    String(String),
+    Node(ResultNode),
 }
 
 #[derive(Deserialize, Debug)]
@@ -294,9 +302,16 @@ fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &
                 .unwrap();
         }
         ResultNode::TreeSitter {
-            children, extra, ..
+            children,
+            extra,
+            value,
+            ..
         } => {
             for child in children.iter().flatten() {
+                replace(child, source, modified, adjustment);
+            }
+
+            if let Some(NodeValue::Node(child)) = value.as_deref() {
                 replace(child, source, modified, adjustment);
             }
 
@@ -353,9 +368,16 @@ fn print(node: &ResultNode, path: &str, line_index: &LineIndex) {
             );
         }
         ResultNode::TreeSitter {
-            children, extra, ..
+            children,
+            extra,
+            value,
+            ..
         } => {
             for child in children.iter().flatten() {
+                print(child, path, line_index);
+            }
+
+            if let Some(NodeValue::Node(child)) = value.as_deref() {
                 print(child, path, line_index);
             }
 
