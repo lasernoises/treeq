@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use clap::{Parser as _, Subcommand};
+use ignore::{Walk, WalkBuilder, types::TypesBuilder};
 use indexmap::IndexMap;
 use jaq_core::{
     Compiler, Ctx, RcIter,
@@ -65,19 +66,34 @@ fn main() {
         }
         Command::Find { filter, path } => todo!(),
         Command::Replace { filter, path } => {
-            let source = std::fs::read_to_string(path).unwrap();
-            let value = eval(filter, &source);
+            for entry in WalkBuilder::new(path)
+                .types(
+                    TypesBuilder::new()
+                        .add_defaults()
+                        .select("php")
+                        .build()
+                        .unwrap(),
+                )
+                .build()
+            {
+                let entry = entry.unwrap();
 
-            let result: ResultNode = serde_json::from_value(value).unwrap();
+                if !entry.file_type().map_or(false, |t| t.is_file()) {
+                    continue;
+                }
 
-            let mut adjustment = 0;
-            let mut modified = source.clone();
+                let source = std::fs::read_to_string(entry.path()).unwrap();
+                let value = eval(filter, &source);
 
-            replace(&result, &source, &mut modified, &mut adjustment);
+                let result: ResultNode = serde_json::from_value(value).unwrap();
 
-            std::fs::write(path, &modified).unwrap();
+                let mut adjustment = 0;
+                let mut modified = source.clone();
 
-            // dbg!(result);
+                replace(&result, &source, &mut modified, &mut adjustment);
+
+                std::fs::write(entry.path(), &modified).unwrap();
+            }
         }
     }
 }
