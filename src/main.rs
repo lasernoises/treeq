@@ -119,7 +119,11 @@ fn eval(parser: &mut Parser, filter: &str, input: &str) -> Value {
 
     let json = node_to_json(&tree.root_node(), &mut tree.walk(), &input);
 
-    let loader = Loader::new(jaq_std::defs().chain(jaq_json::defs()));
+    let defs = jaq_core::load::parse(include_str!("./defs.jq"), |p| p.defs())
+        .unwrap()
+        .into_iter();
+
+    let loader = Loader::new(jaq_std::defs().chain(jaq_json::defs()).chain(defs));
     let arena = Arena::default();
 
     let modules = loader
