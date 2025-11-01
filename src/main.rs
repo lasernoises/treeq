@@ -27,6 +27,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     Inspect { filter: String, path: PathBuf },
+    InspectArg { filter: String, code: String },
     Find { filter: String, path: PathBuf },
     Replace { filter: String, path: PathBuf },
 }
@@ -89,6 +90,11 @@ fn main() {
         Command::Inspect { filter, path } => {
             let source = std::fs::read_to_string(path).unwrap();
             let value = eval(&mut parser, filter, &source);
+
+            serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
+        }
+        Command::InspectArg { filter, code } => {
+            let value = eval(&mut parser, filter, &code);
 
             serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
         }
