@@ -65,6 +65,18 @@ struct Lang {
     language_fn: tree_sitter_language::LanguageFn,
 }
 
+mod keys {
+    use std::rc::Rc;
+
+    thread_local! {
+        pub static KIND: Rc<String> = Rc::new("kind".to_string());
+        pub static START_BYTE: Rc<String> = Rc::new("start_byte".to_string());
+        pub static END_BYTE: Rc<String> = Rc::new("end_byte".to_string());
+        pub static CHILDREN: Rc<String> = Rc::new("children".to_string());
+        pub static VALUE: Rc<String> = Rc::new("value".to_string());
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -154,14 +166,17 @@ fn eval(parser: &mut Parser, filter: &str, input: &str) -> Value {
 fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code: &str) -> Val {
     let mut map = IndexMap::with_capacity_and_hasher(8, foldhash::fast::RandomState::default());
 
-    map.insert("kind".to_string().into(), node.kind().to_string().into());
+    map.insert(
+        keys::KIND.with(|k| k.clone()),
+        node.kind().to_string().into(),
+    );
 
     map.insert(
-        "start_byte".to_string().into(),
+        keys::START_BYTE.with(|k| k.clone()),
         (node.start_byte() as isize).into(),
     );
     map.insert(
-        "end_byte".to_string().into(),
+        keys::END_BYTE.with(|k| k.clone()),
         (node.end_byte() as isize).into(),
     );
 
@@ -184,12 +199,15 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
         .collect();
 
     if !children.is_empty() {
-        map.insert("children".to_string().into(), Val::Arr(Rc::new(children)));
+        map.insert(
+            keys::CHILDREN.with(|k| k.clone()),
+            Val::Arr(Rc::new(children)),
+        );
     }
 
     if node.child_count() == 0 {
         map.insert(
-            "value".to_string().into(),
+            keys::VALUE.with(|k| k.clone()),
             code[node.start_byte()..node.end_byte()].to_string().into(),
         );
     }
