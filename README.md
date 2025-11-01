@@ -37,7 +37,7 @@ treeq rust inspect '[recurse | select(.kind? == "string_content") | .value]' src
 ```
 
 <details>
-  <summary>Output:</summary>
+  <summary>Output</summary>
 
   ```json
   [
@@ -52,5 +52,53 @@ treeq rust inspect '[recurse | select(.kind? == "string_content") | .value]' src
     "{path}:",
     "{block}"
   ]
+  ```
+</details>
+
+### find
+
+Usage: `treeq <LANG> find <FILTER> <PATH>`
+
+#### Example
+
+Finding all macro invocations in the `src` folder.
+
+```sh
+treeq rust find 'walk(if .kind? == "macro_invocation" ?// false then highlight("Look at this glorious macro!") else . end)' src
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+     ╭─[src/main.rs]
+     │
+  81 │       thread_local! {
+     ┆       ▲
+     ┆ ╭─────╯
+  82 │ │         pub static KIND: Rc<String> = Rc::new("kind".to_string());
+     ┆ │
+  83 │ │         pub static START_BYTE: Rc<String> = Rc::new("start_byte".to_string());
+     ┆ │
+  84 │ │         pub static END_BYTE: Rc<String> = Rc::new("end_byte".to_string());
+     ┆ │
+  85 │ │         pub static CHILDREN: Rc<String> = Rc::new("children".to_string());
+     ┆ │
+  86 │ │         pub static VALUE: Rc<String> = Rc::new("value".to_string());
+     ┆ │
+  87 │ │     }
+     ┆ │     ▲
+     ┆ │     │
+     ┆ ╰─────┴─ Look at this glorious macro!
+
+  ───╯
+      ╭─[src/main.rs]
+      │
+  202 │     assert!(out.next().is_none());
+      ┆     ──────────────┬──────────────
+      ┆                   │
+      ┆                   ╰──────────────── Look at this glorious macro!
+
+  ────╯
   ```
 </details>
