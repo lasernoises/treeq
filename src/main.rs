@@ -205,7 +205,7 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
         );
     }
 
-    if node.child_count() == 0 {
+    if node.named_child_count() == 0 {
         map.insert(
             keys::VALUE.with(|k| k.clone()),
             code[node.start_byte()..node.end_byte()].to_string().into(),
