@@ -3,6 +3,7 @@ mod langs;
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use clap::{Parser as _, Subcommand};
+use codesnake::{Block, CodeWidth, Label, LineIndex};
 use ignore::{WalkBuilder, types::TypesBuilder};
 use indexmap::IndexMap;
 use jaq_core::{
@@ -42,13 +43,21 @@ enum ResultNode {
         entries: Vec<ReplaceEntry>,
     },
 
+    #[serde(rename = "_treeq_highlight")]
+    Highlight {
+        start_byte: usize,
+        end_byte: usize,
+        message: String,
+    },
+
     #[serde(untagged)]
+    #[allow(unused)]
     TreeSitter {
         kind: String,
         start_byte: usize,
         end_byte: usize,
         children: Option<Vec<ResultNode>>,
-        value: Option<String>,
+        value: Option<Box<ReplaceEntry>>,
         #[serde(flatten)]
         extra: HashMap<String, ResultNode>,
     },
@@ -98,7 +107,33 @@ fn main() {
 
             serde_json::to_writer_pretty(std::io::stdout(), &value).unwrap();
         }
-        Command::Find { filter, path } => todo!(),
+        Command::Find { filter, path } => {
+            for entry in WalkBuilder::new(path)
+                .types(
+                    TypesBuilder::new()
+                        .add_defaults()
+                        .select(lang.file_type)
+                        .build()
+                        .unwrap(),
+                )
+                .build()
+            {
+                let entry = entry.unwrap();
+
+                if !entry.file_type().map_or(false, |t| t.is_file()) {
+                    continue;
+                }
+
+                let source = std::fs::read_to_string(entry.path()).unwrap();
+                let value = eval(&mut parser, filter, &source);
+
+                let result: ResultNode = serde_json::from_value(value).unwrap();
+
+                let line_index = LineIndex::new(&source);
+
+                print(&result, entry.path().to_str().unwrap(), &line_index);
+            }
+        }
         Command::Replace { filter, path } => {
             for entry in WalkBuilder::new(path)
                 .types(
@@ -223,6 +258,7 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
 
 fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &mut isize) {
     match node {
+        ResultNode::Highlight { .. } => (),
         ResultNode::Replace {
             start_byte,
             end_byte,
@@ -235,6 +271,7 @@ fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &
                 match entry {
                     ReplaceEntry::String(string) => tmp.push_str(string),
                     ReplaceEntry::Node(result_node) => match result_node {
+                        ResultNode::Highlight { .. } => todo!(),
                         ResultNode::Replace { .. } => todo!(),
                         &ResultNode::TreeSitter {
                             start_byte,
@@ -265,6 +302,65 @@ fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &
 
             for (_, child) in extra {
                 replace(child, source, modified, adjustment);
+            }
+        }
+    }
+}
+
+fn print(node: &ResultNode, path: &str, line_index: &LineIndex) {
+    match node {
+        &ResultNode::Highlight {
+            start_byte,
+            end_byte,
+            ref message,
+        } => {
+            let block = Block::new(
+                line_index,
+                std::iter::once(
+                    Label::new(start_byte..end_byte).with_text(CodeWidth::new(message, 0)),
+                ),
+            )
+            .unwrap();
+
+            let block = block.map_code(|c| CodeWidth::new(c, c.len()));
+
+            println!(
+                "{}[{path}]\n{block}\n{}",
+                block.prologue(),
+                block.epilogue()
+            );
+        }
+        &ResultNode::Replace {
+            start_byte,
+            end_byte,
+            entries: _,
+        } => {
+            let block = Block::new(
+                line_index,
+                std::iter::once(
+                    Label::new(start_byte..end_byte)
+                        .with_text(CodeWidth::new("This will be replaced.", 0)),
+                ),
+            )
+            .unwrap();
+
+            let block = block.map_code(|c| CodeWidth::new(c, c.len()));
+
+            println!(
+                "{}[{path}]\n{block}\n{}",
+                block.prologue(),
+                block.epilogue()
+            );
+        }
+        ResultNode::TreeSitter {
+            children, extra, ..
+        } => {
+            for child in children.iter().flatten() {
+                print(child, path, line_index);
+            }
+
+            for (_, child) in extra {
+                print(child, path, line_index);
             }
         }
     }
