@@ -155,7 +155,6 @@ treeq rust find 'walk(
       ┆ │     ▲
       ┆ │     │
       ┆ ╰─────┴─ Look at this glorious macro!
-
    ───╯
        ╭─[src/main.rs]
        │
@@ -163,7 +162,6 @@ treeq rust find 'walk(
        ┆                                      ────────────┬────────────
        ┆                                                  │
        ┆                                                  ╰──────────────────────────── Look at this glorious macro!
-
    ────╯
        ╭─[src/main.rs]
        │
@@ -171,7 +169,6 @@ treeq rust find 'walk(
        ┆     ──────────────┬──────────────
        ┆                   │
        ┆                   ╰──────────────── Look at this glorious macro!
-
    ────╯
        ╭─[src/main.rs]
        │
@@ -179,7 +176,6 @@ treeq rust find 'walk(
        ┆                                                         ───┬───
        ┆                                                            │
        ┆                                                            ╰───── Look at this glorious macro!
-
    ────╯
        ╭─[src/main.rs]
        │
@@ -187,7 +183,6 @@ treeq rust find 'walk(
        ┆                                                       ───┬───
        ┆                                                          │
        ┆                                                          ╰───── Look at this glorious macro!
-
    ────╯
        ╭─[src/main.rs]
        │
@@ -204,7 +199,6 @@ treeq rust find 'walk(
        ┆ │             ▲
        ┆ │             │
        ┆ ╰─────────────┴── Look at this glorious macro!
-
    ────╯
        ╭─[src/main.rs]
        │
@@ -221,7 +215,6 @@ treeq rust find 'walk(
        ┆ │             ▲
        ┆ │             │
        ┆ ╰─────────────┴── Look at this glorious macro!
-
    ────╯
    ```
 </details>

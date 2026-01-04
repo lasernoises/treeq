@@ -343,11 +343,7 @@ fn print(node: &ResultNode, path: &str, line_index: &LineIndex) {
 
             let block = block.map_code(|c| CodeWidth::new(c, c.len()));
 
-            println!(
-                "{}[{path}]\n{block}\n{}",
-                block.prologue(),
-                block.epilogue()
-            );
+            println!("{}[{path}]\n{block}{}", block.prologue(), block.epilogue());
         }
         &ResultNode::Replace {
             start_byte,
@@ -365,11 +361,7 @@ fn print(node: &ResultNode, path: &str, line_index: &LineIndex) {
 
             let block = block.map_code(|c| CodeWidth::new(c, c.len()));
 
-            println!(
-                "{}[{path}]\n{block}\n{}",
-                block.prologue(),
-                block.epilogue()
-            );
+            println!("{}[{path}]\n{block}{}", block.prologue(), block.epilogue());
         }
         ResultNode::TreeSitter {
             children,
