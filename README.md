@@ -26,7 +26,7 @@ could simply leave notes in the tree to replace specific nodes with a string.
 
 Usage: `treeq <LANG> inspect <FILTER> <PATH>`
 
-With `treeq inspect` you can inspect the syntax tree of a single source file 
+With `treeq inspect` you can inspect the syntax tree of a single source file.
 
 #### Example
 
@@ -52,6 +52,64 @@ treeq rust inspect '[recurse | select(.kind? == "string_content") | .value]' src
     "{path}:",
     "{block}"
   ]
+  ```
+</details>
+
+### inspect-str
+
+Usage: `treeq <LANG> inspect-str <FILTER> <CODE>`
+
+`inspect-str` works like `inspect`, but with source code provided by command line argument.
+
+#### Example
+
+```sh
+treeq js inspect-str . '[1, 2, 3]'
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```json
+  {
+    "kind": "program",
+    "start_byte": 0,
+    "end_byte": 9,
+    "children": [
+      {
+        "kind": "expression_statement",
+        "start_byte": 0,
+        "end_byte": 9,
+        "children": [
+          {
+            "kind": "array",
+            "start_byte": 0,
+            "end_byte": 9,
+            "children": [
+              {
+                "kind": "number",
+                "start_byte": 1,
+                "end_byte": 2,
+                "value": "1"
+              },
+              {
+                "kind": "number",
+                "start_byte": 4,
+                "end_byte": 5,
+                "value": "2"
+              },
+              {
+                "kind": "number",
+                "start_byte": 7,
+                "end_byte": 8,
+                "value": "3"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
   ```
 </details>
 
