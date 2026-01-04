@@ -117,6 +117,9 @@ treeq js inspect-str . '[1, 2, 3]'
 
 Usage: `treeq <LANG> find <FILTER> <PATH>`
 
+Print nodes matched with `highlight` or `replace`. If the path points to a folder, the folder is
+walked recursively to find files of the given language, honoring ignore files like `.gitignore`.
+
 #### Example
 
 Finding all macro invocations in the `src` folder.
@@ -227,6 +230,10 @@ treeq rust find 'walk(
 
 Usage: `treeq <LANG> replace <FILTER> <PATH>`
 
+Replaces occurences of the replace node that is inserted by the `replace` function. If the path
+points to a folder, the folder is walked recursively to find files of the given language, honoring
+ignore files like `.gitignore`.
+
 #### Example
 
 Making every struct public.
@@ -241,6 +248,32 @@ treeq rust replace 'walk(
    else . end
 )' src
 ```
+
+## Functions
+
+In addition to the standard functions available in jq/jaq, there are two functions for marking nodes
+to be replaced or highlighted.
+
+### `highlight(message)`
+
+Replaces the input node with a node with kind `_treeq_highlight`. The highlighted range is displayed
+when using this function in a filter passed to `treeq find`. The inserted node can be seen as JSON
+with `treeq inspect`. `treeq find` recursively searches the produced tree for these nodes (and
+`_treeq_reaplace` nodes) and uses the start and end bytes from the input node for highlighting. If
+any other changes are made to the tree by the filter, those will be ignored (unless they change the
+types of fields to make them incompatible with the expected structure, such as changing `"kind"`
+fields to anything other than a string.)
+
+### `replace(entries)`
+
+Replaces the input node with a node with kind `_treeq_replace`. The replaced node is used for
+updating source when using this function in a filter passed to `treeq replace`. With `treeq replace`
+these nodes are simply highlighted like with `highlight`.
+
+The `entries` argument is an array that can contain both strings and nodes. Strings are inserted
+directly into the source file and should be syntactically valid in the given language. Nodes are
+copied their byte-range from the old version of the source file. Offsets are adjusted to enable
+multiple subsequent replaces. Nested replaces are not yet supported.
 
 ## Supported Languages
 
