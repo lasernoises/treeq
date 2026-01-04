@@ -188,10 +188,12 @@ treeq rust replace 'walk(
 
 Currently only a few languages are supported:
 
-- Rust
-- PHP
+- JavaScript
 - Markdown (This one is currently only partially usable as the grammar seems to have a lot of text
   content in unnamed nodes, which get omitted in the tree we expose.)
+- PHP
+- Rust
+- TypeScript
 
 New languages can be added in `src/langs.rs` as long as they have a Tree-sitter grammar available as
 a crate.

@@ -79,6 +79,10 @@ enum ReplaceEntry {
 }
 
 struct Lang {
+    // TODO: Change this to a list of extensions. The types from ignore are sometimes not exactly
+    // what we want.
+    /// File type from the ignore crate. See
+    /// <https://github.com/BurntSushi/ripgrep/blob/master/crates/ignore/src/default_types.rs>.
     file_type: &'static str,
     language_fn: tree_sitter_language::LanguageFn,
 }
