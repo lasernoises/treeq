@@ -16,5 +16,6 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.145", features = ["preserve_order"] }
 tree-sitter = "0.25.10"
 tree-sitter-language = "0.1.5"
+tree-sitter-md = "0.5.1"
 tree-sitter-php = "0.24.2"
 tree-sitter-rust = "0.24.0"

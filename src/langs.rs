@@ -6,6 +6,7 @@ use crate::Lang;
 pub enum CliLang {
     Rust,
     Php,
+    Markdown,
 }
 
 impl CliLang {
@@ -13,6 +14,7 @@ impl CliLang {
         match self {
             CliLang::Rust => RUST,
             CliLang::Php => PHP,
+            CliLang::Markdown => MARKDOWN,
         }
     }
 }
@@ -25,4 +27,9 @@ pub const RUST: Lang = Lang {
 pub const PHP: Lang = Lang {
     file_type: "php",
     language_fn: tree_sitter_php::LANGUAGE_PHP,
+};
+
+pub const MARKDOWN: Lang = Lang {
+    file_type: "md",
+    language_fn: tree_sitter_md::LANGUAGE,
 };

@@ -5,7 +5,7 @@ awesome [jaq](https://github.com/01mf02/jaq), a Rust implementation of the JQ la
 
 > [!NOTE]
 > This project is currently very much just an experiment that I hacked together in a few hours.
-> Among other things it lacks proper error handling.
+> Among other things it lacks proper error handling and support for nested replacing.
 
 ## Concept
 
@@ -183,3 +183,15 @@ treeq rust replace 'walk(
    else . end
 )' src
 ```
+
+## Supported Languages
+
+Currently only a few languages are supported:
+
+- Rust
+- PHP
+- Markdown (This one is currently only partially usable as the grammar seems to have a lot of text
+  content in unnamed nodes, which get omitted in the tree we expose.)
+
+New languages can be added in `src/langs.rs` as long as they have a Tree-sitter grammar available as
+a crate.
