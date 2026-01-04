@@ -64,41 +64,122 @@ Usage: `treeq <LANG> find <FILTER> <PATH>`
 Finding all macro invocations in the `src` folder.
 
 ```sh
-treeq rust find 'walk(if .kind? == "macro_invocation" ?// false then highlight("Look at this glorious macro!") else . end)' src
+treeq rust find 'walk(
+   if .kind? == "macro_invocation" ?// false then
+      highlight("Look at this glorious macro!")
+   else . end
+)' src
 ```
 
 <details>
   <summary>Output</summary>
 
   ```
-     ╭─[src/main.rs]
-     │
-  81 │       thread_local! {
-     ┆       ▲
-     ┆ ╭─────╯
-  82 │ │         pub static KIND: Rc<String> = Rc::new("kind".to_string());
-     ┆ │
-  83 │ │         pub static START_BYTE: Rc<String> = Rc::new("start_byte".to_string());
-     ┆ │
-  84 │ │         pub static END_BYTE: Rc<String> = Rc::new("end_byte".to_string());
-     ┆ │
-  85 │ │         pub static CHILDREN: Rc<String> = Rc::new("children".to_string());
-     ┆ │
-  86 │ │         pub static VALUE: Rc<String> = Rc::new("value".to_string());
-     ┆ │
-  87 │ │     }
-     ┆ │     ▲
-     ┆ │     │
-     ┆ ╰─────┴─ Look at this glorious macro!
-
-  ───╯
       ╭─[src/main.rs]
       │
-  202 │     assert!(out.next().is_none());
-      ┆     ──────────────┬──────────────
-      ┆                   │
-      ┆                   ╰──────────────── Look at this glorious macro!
+   89 │       thread_local! {
+      ┆       ▲
+      ┆ ╭─────╯
+   90 │ │         pub static KIND: Rc<String> = Rc::new("kind".to_string());
+      ┆ │
+   91 │ │         pub static START_BYTE: Rc<String> = Rc::new("start_byte".to_string());
+      ┆ │
+   92 │ │         pub static END_BYTE: Rc<String> = Rc::new("end_byte".to_string());
+      ┆ │
+   93 │ │         pub static CHILDREN: Rc<String> = Rc::new("children".to_string());
+      ┆ │
+   94 │ │         pub static VALUE: Rc<String> = Rc::new("value".to_string());
+      ┆ │
+   95 │ │     }
+      ┆ │     ▲
+      ┆ │     │
+      ┆ ╰─────┴─ Look at this glorious macro!
 
-  ────╯
-  ```
+   ───╯
+       ╭─[src/main.rs]
+       │
+   183 │     let defs = jaq_core::load::parse(include_str!("./defs.jq"), |p| p.defs())
+       ┆                                      ────────────┬────────────
+       ┆                                                  │
+       ┆                                                  ╰──────────────────────────── Look at this glorious macro!
+
+   ────╯
+       ╭─[src/main.rs]
+       │
+   210 │     assert!(out.next().is_none());
+       ┆     ──────────────┬──────────────
+       ┆                   │
+       ┆                   ╰──────────────── Look at this glorious macro!
+
+   ────╯
+       ╭─[src/main.rs]
+       │
+   282 │                         ResultNode::Highlight { .. } => todo!(),
+       ┆                                                         ───┬───
+       ┆                                                            │
+       ┆                                                            ╰───── Look at this glorious macro!
+
+   ────╯
+       ╭─[src/main.rs]
+       │
+   283 │                         ResultNode::Replace { .. } => todo!(),
+       ┆                                                       ───┬───
+       ┆                                                          │
+       ┆                                                          ╰───── Look at this glorious macro!
+
+   ────╯
+       ╭─[src/main.rs]
+       │
+   342 │               println!(
+       ┆               ▲
+       ┆ ╭─────────────╯
+   343 │ │                 "{}[{path}]\n{block}\n{}",
+       ┆ │
+   344 │ │                 block.prologue(),
+       ┆ │
+   345 │ │                 block.epilogue()
+       ┆ │
+   346 │ │             );
+       ┆ │             ▲
+       ┆ │             │
+       ┆ ╰─────────────┴── Look at this glorious macro!
+
+   ────╯
+       ╭─[src/main.rs]
+       │
+   364 │               println!(
+       ┆               ▲
+       ┆ ╭─────────────╯
+   365 │ │                 "{}[{path}]\n{block}\n{}",
+       ┆ │
+   366 │ │                 block.prologue(),
+       ┆ │
+   367 │ │                 block.epilogue()
+       ┆ │
+   368 │ │             );
+       ┆ │             ▲
+       ┆ │             │
+       ┆ ╰─────────────┴── Look at this glorious macro!
+
+   ────╯
+   ```
 </details>
+
+### replace
+
+Usage: `treeq <LANG> replace <FILTER> <PATH>`
+
+#### Example
+
+Making every struct public.
+
+```sh
+treeq rust replace 'walk(
+   if
+      (.kind? == "struct_item" ?// false)
+      and (.children? ?// [] | any(.kind? == "visibility_modifier") | not)
+   then
+      replace(["pub ", .])
+   else . end
+)' src
+```
