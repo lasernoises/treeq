@@ -311,6 +311,9 @@ fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &
             value,
             ..
         } => {
+            // TODO: Fix order of walking through these. Currently it can be the wrong order
+            // sometimes, which makes the adjustment not work right.
+
             for child in children.iter().flatten() {
                 replace(child, source, modified, adjustment);
             }
