@@ -56,7 +56,8 @@ enum ResultNode {
         kind: String,
         start_byte: usize,
         end_byte: usize,
-        children: Option<Vec<ResultNode>>,
+        #[serde(default = "Vec::new")]
+        children: Vec<ResultNode>,
         value: Option<Box<NodeValue>>,
         #[serde(flatten)]
         extra: IndexMap<String, ResultNode>,
@@ -69,6 +70,84 @@ enum NodeValue {
     #[allow(unused)]
     String(String),
     Node(ResultNode),
+}
+
+enum FlattenedResultNode {
+    Replace {
+        start_byte: usize,
+        end_byte: usize,
+        entries: Vec<ReplaceEntry>,
+    },
+
+    Highlight {
+        start_byte: usize,
+    },
+
+    TreeSitter {
+        start_byte: usize,
+        children: Vec<FlattenedResultNode>,
+        value: Option<Box<FlattenedNodeValue>>,
+    },
+}
+
+enum FlattenedNodeValue {
+    String,
+    Node(FlattenedResultNode),
+}
+
+impl ResultNode {
+    fn flatten(self) -> FlattenedResultNode {
+        match self {
+            ResultNode::Replace {
+                start_byte,
+                end_byte,
+                entries,
+            } => FlattenedResultNode::Replace {
+                start_byte,
+                end_byte,
+                entries,
+            },
+            ResultNode::Highlight { start_byte, .. } => {
+                FlattenedResultNode::Highlight { start_byte }
+            }
+            ResultNode::TreeSitter {
+                start_byte,
+                children,
+                value,
+                extra,
+                ..
+            } => {
+                let mut children: Vec<FlattenedResultNode> = children
+                    .into_iter()
+                    .chain(extra.into_values())
+                    .map(|x| x.flatten())
+                    .collect();
+
+                children.sort_by(|a, b| a.start_byte().cmp(&b.start_byte()));
+
+                FlattenedResultNode::TreeSitter {
+                    start_byte,
+                    children: children,
+                    value: value.map(|value| {
+                        Box::new(match *value {
+                            NodeValue::String(_) => FlattenedNodeValue::String,
+                            NodeValue::Node(node) => FlattenedNodeValue::Node(node.flatten()),
+                        })
+                    }),
+                }
+            }
+        }
+    }
+}
+
+impl FlattenedResultNode {
+    fn start_byte(&self) -> usize {
+        match *self {
+            FlattenedResultNode::Replace { start_byte, .. } => start_byte,
+            FlattenedResultNode::Highlight { start_byte, .. } => start_byte,
+            FlattenedResultNode::TreeSitter { start_byte, .. } => start_byte,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -171,7 +250,7 @@ fn main() {
                 let mut adjustment = 0;
                 let mut modified = source.clone();
 
-                replace(&result, &source, &mut modified, &mut adjustment);
+                replace(&result.flatten(), &source, &mut modified, &mut adjustment);
 
                 std::fs::write(entry.path(), &modified).unwrap();
             }
@@ -268,10 +347,15 @@ fn node_to_json<'tree>(node: &Node<'tree>, cursor: &mut TreeCursor<'tree>, code:
     Val::obj(map)
 }
 
-fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &mut isize) {
+fn replace(
+    node: &FlattenedResultNode,
+    source: &str,
+    modified: &mut String,
+    adjustment: &mut isize,
+) {
     match node {
-        ResultNode::Highlight { .. } => (),
-        ResultNode::Replace {
+        FlattenedResultNode::Highlight { .. } => (),
+        FlattenedResultNode::Replace {
             start_byte,
             end_byte,
             entries,
@@ -305,24 +389,14 @@ fn replace(node: &ResultNode, source: &str, modified: &mut String, adjustment: &
                 .checked_signed_diff(end_byte - start_byte)
                 .unwrap();
         }
-        ResultNode::TreeSitter {
-            children,
-            extra,
-            value,
-            ..
+        FlattenedResultNode::TreeSitter {
+            children, value, ..
         } => {
-            // TODO: Fix order of walking through these. Currently it can be the wrong order
-            // sometimes, which makes the adjustment not work right.
-
-            for child in children.iter().flatten() {
+            for child in children {
                 replace(child, source, modified, adjustment);
             }
 
-            if let Some(NodeValue::Node(child)) = value.as_deref() {
-                replace(child, source, modified, adjustment);
-            }
-
-            for (_, child) in extra {
+            if let Some(FlattenedNodeValue::Node(child)) = value.as_deref() {
                 replace(child, source, modified, adjustment);
             }
         }
@@ -372,7 +446,7 @@ fn print(node: &ResultNode, path: &str, line_index: &LineIndex) {
             value,
             ..
         } => {
-            for child in children.iter().flatten() {
+            for child in children {
                 print(child, path, line_index);
             }
 
