@@ -1,6 +1,6 @@
 mod langs;
 
-use std::{collections::HashMap, path::PathBuf, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 
 use clap::{Parser as _, Subcommand};
 use codesnake::{Block, CodeWidth, Label, LineIndex};
@@ -59,7 +59,7 @@ enum ResultNode {
         children: Option<Vec<ResultNode>>,
         value: Option<Box<NodeValue>>,
         #[serde(flatten)]
-        extra: HashMap<String, ResultNode>,
+        extra: IndexMap<String, ResultNode>,
     },
 }
 
